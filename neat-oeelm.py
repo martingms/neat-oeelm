@@ -1,9 +1,15 @@
 #!/usr/bin/env python
-
 import numpy as np
 import MultiNEAT as NEAT
-#import cv2
-#cv2.namedWindow('CPPN', 0)
+
+import warnings
+warnings.simplefilter("error")
+
+"""
+import cv2
+cv2.namedWindow('NN', 0)
+cv2.namedWindow('CPPN', 0)
+"""
 
 # TODO Move all params to files.
 GENERATIONS = 10000
@@ -12,7 +18,8 @@ MOVING_AVERAGE_ALPHA = 0.1
 
 def get_NEAT_params():
     params = NEAT.Parameters()
-    params.PopulationSize = 5
+    params.PopulationSize = 100
+    params.YoungAgeFitnessBoost = 1.0 # No boost
 
     params.DynamicCompatibility = True
     params.CompatTreshold = 2.0
@@ -56,108 +63,140 @@ def get_NEAT_params():
 
     return params
 
+
+def zip_fitness(genome_list, fitness_list):
+    for g, f in zip(genome_list, fitness_list):
+        g.SetFitness(f)
+        g.SetEvaluated()
+
 class Network(object):
-    def __init__(self, inputmapping, noutputs, nfeatures):
-        self.inputmapping = inputmapping
-        self.noutputs = noutputs
+    def __init__(self, substrate, nfeatures):
+        self.substrate = substrate
         self.nfeatures = nfeatures
-        x, y, _ = self.inputmapping.shape
-        self.feature_weights = np.zeros((nfeatures, x, y))
-        self.output_weights = np.zeros(nfeatures + 1) # Including bias.
+        self.output_weights = np.zeros(nfeatures) # TODO: Include bias.
         self.squared_norm_ema = 0.0
-        self.weight_magnitudes_ema = abs(self.output_weights)
+        # TODO: This will continuously grow each generation.
+        # An ID that disappears one generation will probably not come back,
+        # so can just delete it.
+        self.genome_archive = {} # gID: [weight, weight_magnitude_ema]
 
-    def calculate_feature_weights(self, cppn):
-        x, y, _ = self.inputmapping.shape
-        weights = np.zeros((x,y)) # TODO: dtype?
+    def calculate_feature_values(self, genome_list, input_vals):
+        def evaluate(genome):
+            """
+            net = NEAT.NeuralNetwork()
+            genome.BuildPhenotype(net) 
+            img = np.zeros((250, 250, 3), dtype=np.uint8)
+            img += 10
+            NEAT.DrawPhenotype(img, (0, 0, 250, 250), net )
+            cv2.imshow("CPPN", img)
+            """
 
-        #img = np.zeros((250, 250, 3), dtype=np.uint8)
-        #NEAT.DrawPhenotype(img, (0, 0, 250, 250), cppn)
-        #cv2.imshow("CPPN", img)
-        #cv2.waitKey(10)
-        for x, y in np.ndindex(weights.shape):
-            values = self.inputmapping[x][y]
-            cppn.Input(values)
-            cppn.Activate()
-            output = cppn.Output()
-            assert(len(output) == 1)
-            weights[x][y] = output[0]
+            # TODO: See if this can be moved outside loop.
+            feature = NEAT.NeuralNetwork()
+            genome.BuildHyperNEATPhenotype(feature, self.substrate)
+            """
+            img = np.zeros((250,250,3), dtype=np.uint8)
+            img += 10
+            NEAT.DrawPhenotype(img, (0, 0, 250, 250), feature, substrate=True)
+            cv2.imshow("NN", img)
+            cv2.waitKey(0)
+            print "input", input_vals
+            """
+            feature.Flush()
+            feature.Input(input_vals)
+            # FIXME: See if this is really necessary.
+            for _ in range(2): # This is supposed to be depth? Can one use genome.GetDepth or something?
+                feature.Activate()
+            return feature.Output()[0]
 
-        return weights
+        return np.asarray([evaluate(genome) for genome in genome_list])
 
-    def calculate_all_feature_weights(self, genome_list):
-        print "len(genome_list)", len(genome_list)
-        print "len(feature_weights)", len(self.feature_weights)
-        assert(len(genome_list) == len(self.feature_weights))
-        # TODO: Hopefully this can be reused?
-        cppn = NEAT.NeuralNetwork()
-        for i in range(len(genome_list)):
-            genome_list[i].BuildPhenotype(cppn)
-            # TODO: Probably  better to modfiy instead of replacing.
-            self.feature_weights[i] = self.calculate_feature_weights(cppn)
-
-    def calculate_feature_values(self, input_vals):
-        # TODO: J. Auerbach has sigmoid output as an option too.
-        feature_inputs = np.ndarray.flatten(np.dot(self.feature_weights, input_vals))
-        print "FEATURE_INPUTS:", feature_inputs
-        
-        return np.hstack((np.asarray(np.greater(feature_inputs,
-                                               0.5), # TODO: Evolve thresholds aswell?
-                                    dtype=float),
-                         np.asarray([1.]))) # TODO: Make bias an option?
-
-    def train(self, input_vals, target, iteration):
-        print "\n\n\n"
-        print "========================================================"
-        print "INPUT:", input_vals
-        print "FEATUTRE_WEIGHTS:", self.feature_weights
-        feature_values = self.calculate_feature_values(input_vals)
-        print "FEATURE_VALUES:", feature_values
+    def train(self, genome_list, input_vals, target, iteration):
+        # TODO: genome_archive is a quite ugly hack.
+        assert(len(genome_list) == len(self.output_weights))
+        feature_values = self.calculate_feature_values(genome_list, input_vals)
+        print "FEATURE_VALUES", feature_values
 
         squared_feature_norm = np.dot(feature_values, feature_values)
+        median_w_m_ema = 0
 
         if iteration == 0:
             self.squared_norm_ema = squared_feature_norm
         else:
             self.squared_norm_ema = (self.squared_norm_ema * 0.999 +
                     squared_feature_norm * 0.001)
+            median_w_m_ema = np.median([val[1] for val in self.genome_archive.values()])
 
         learning_rate = BASE_LEARNING_RATE / self.squared_norm_ema
 
-        print "OUTPUT_WEIGHTS:", self.output_weights
-        output = np.dot(self.output_weights, feature_values)
-        print "OUTPUT:", output
-        print "TARGET:", target
-        print "========================================================"
-        print "\n\n\n"
+        for i in range(len(genome_list)):
+            g_id = genome_list[i].GetID()
+            if g_id not in self.genome_archive:
+                self.genome_archive[g_id] = [0.0, median_w_m_ema]
+
+        output_weights = [self.genome_archive[g.GetID()][0] for g in genome_list]               
+        output = np.dot(feature_values, output_weights)
+        print "target:", target
+        print "output:", output
+        #print "error:", target-output
         error = target - output
-
-        self.output_weights += learning_rate * error * feature_values
-
+        
         # TODO: Do backprop?
 
-        self.weight_magnitutes_ema = (
-                MOVING_AVERAGE_ALPHA * abs(self.output_weights)
-                + (1 - MOVING_AVERAGE_ALPHA) * self.weight_magnitudes_ema)
+        for i in range(len(genome_list)):
+            g = self.genome_archive[genome_list[i].GetID()]
+            g[0] += learning_rate * error * feature_values[i]
+            g[1] = (MOVING_AVERAGE_ALPHA * abs(g[0])
+                    + (1 - MOVING_AVERAGE_ALPHA) * g[1])
 
-        return error**2
+        weight_magnitude_emas = [val[1] for val in self.genome_archive.values()]
+        return (error**2, weight_magnitude_emas)
 
 # TODO: Move to function, make module conveniently callable, and move
 # experiment code in different file.
 if __name__ == "__main__":
     params = get_NEAT_params()
 
-    # 2 inputs, 1 output
-    genome = NEAT.Genome(0, 2, 0, 1, False,
-        NEAT.ActivationFunction.UNSIGNED_SIGMOID,
-        NEAT.ActivationFunction.UNSIGNED_SIGMOID,
-        0, params)
+    #substrate = NEAT.Substrate([(0,-2), (0,-1), (0,0), (0,1), (0,2)],
+    substrate = NEAT.Substrate([(0,-1), (0,0), (0,1)],
+                               [(1,0)],
+                               [(2,0)])
+
+    substrate.m_allow_input_hidden_links = False
+    substrate.m_allow_input_output_links = False
+    substrate.m_allow_hidden_hidden_links = False
+    substrate.m_allow_hidden_output_links = False
+    substrate.m_allow_output_hidden_links = False
+    substrate.m_allow_output_output_links = False
+    substrate.m_allow_looped_hidden_links = False
+    substrate.m_allow_looped_output_links = False
+
+    # let's configure it a bit to avoid recurrence in the substrate
+    substrate.m_allow_input_hidden_links = True
+    substrate.m_allow_hidden_output_links = True
+    # let's set the activation functions
+   # substrate.m_hidden_nodes_activation = NEAT.ActivationFunction.TANH
+    substrate.m_outputs_nodes_activation = NEAT.ActivationFunction.SIGNED_SIGMOID
+    """
+
+    # when to output a link and max weight
+    substrate.m_link_threshold = 0.2 
+    substrate.m_max_weight = 8.0 
+    """
+
+    genome = NEAT.Genome(0,
+        substrate.GetMinCPPNInputs(),
+        0,
+        substrate.GetMinCPPNOutputs(),
+        False,
+        NEAT.ActivationFunction.SIGNED_SIGMOID,
+        NEAT.ActivationFunction.SIGNED_SIGMOID,
+        0,
+        params)
 
     pop = NEAT.Population(genome, params, True, 1.0)
 
-    inputmapping = np.asarray([[(0,-2), (0,-1), (0,0), (0,1), (0,2)]])
-
-    net = Network(inputmapping, 1, 5)
+    net = Network(substrate, 5)
 
     #### Creating random function, code stolen from oeelm.py
     import oeelm # J. Auerbach
@@ -175,26 +214,24 @@ if __name__ == "__main__":
 
     ###########################
 
+    #### XOR
+    xorpatterns = [([1., 0., 1.], 1.), ([0., 1., 1.], 1.), ([1., 1., 1.], 0.), ([0., 0., 1.], 0.)] 
+    ###########################
+
     for generation in range(GENERATIONS):
         genome_list = NEAT.GetGenomeList(pop)
 
         if genome_list > net.nfeatures:
-            genome_list = genome_list[:5]
-        net.calculate_all_feature_weights(genome_list)
-        # TODO: This is a hack since we're unable to know which features are new
-        # (in which case we should set median w_m_ema, so we let them prove
-        # themselves for a couple of generations before we check fitness.
-        for i in range(50):
-            rand_input = rng.rand(5)
-            target = target_func.get_output(rand_input) # TODO: Add noise?
-             
-            mse = net.train(rand_input, target, i)
+            genome_list = genome_list[:net.nfeatures]
 
-            # TODO: Set fitness!
-            # THIS AINT WORKING
-            #for j in range(len(net.weight_magnitudes_ema)):
-            #   genome_list[i].SetFitness(net.weight_magnitudes_ema[i])
+        #rand_input = rng.rand(5)
+        #target = target_func.get_output(rand_input) # TODO: Add noise?
+        rand_input, target = xorpatterns[rng.randint(0, len(xorpatterns))]
+         
+        mse, fitnesses = net.train(genome_list, rand_input, target, generation)
+        zip_fitness(genome_list, fitnesses)
 
-            #print "MSE:", mse
+        print "MSE:", mse
 
-        pop.Epoch()
+        deleted_genome = NEAT.Genome()
+        new_genome = pop.Tick(deleted_genome)
