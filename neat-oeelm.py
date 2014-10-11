@@ -12,13 +12,14 @@ cv2.namedWindow('CPPN', 0)
 """
 
 # TODO Move all params to files.
-GENERATIONS = 10000
+GENERATIONS = 10000000
 BASE_LEARNING_RATE = 0.1
 MOVING_AVERAGE_ALPHA = 0.1
 
 def get_NEAT_params():
     params = NEAT.Parameters()
-    params.PopulationSize = 100
+    params.PopulationSize = 10
+    """
     params.YoungAgeFitnessBoost = 1.0 # No boost
 
     params.DynamicCompatibility = True
@@ -39,6 +40,7 @@ def get_NEAT_params():
     params.MaxWeight = 8.0
     params.WeightMutationMaxPower = 0.2
     params.WeightReplacementMaxPower = 1.0
+    """
 
     params.MutateActivationAProb = 0.0
     params.ActivationAMutationMaxPower = 0.5
@@ -62,12 +64,6 @@ def get_NEAT_params():
     params.ActivationFunction_Linear_Prob = 1.0;
 
     return params
-
-
-def zip_fitness(genome_list, fitness_list):
-    for g, f in zip(genome_list, fitness_list):
-        g.SetFitness(f)
-        g.SetEvaluated()
 
 class Network(object):
     def __init__(self, substrate, nfeatures):
@@ -94,14 +90,15 @@ class Network(object):
             # TODO: See if this can be moved outside loop.
             feature = NEAT.NeuralNetwork()
             genome.BuildHyperNEATPhenotype(feature, self.substrate)
+
             """
             img = np.zeros((250,250,3), dtype=np.uint8)
             img += 10
             NEAT.DrawPhenotype(img, (0, 0, 250, 250), feature, substrate=True)
             cv2.imshow("NN", img)
-            cv2.waitKey(0)
-            print "input", input_vals
+            cv2.waitKey(1)
             """
+
             feature.Flush()
             feature.Input(input_vals)
             # FIXME: See if this is really necessary.
@@ -115,7 +112,7 @@ class Network(object):
         # TODO: genome_archive is a quite ugly hack.
         assert(len(genome_list) == len(self.output_weights))
         feature_values = self.calculate_feature_values(genome_list, input_vals)
-        print "FEATURE_VALUES", feature_values
+        #print "FEATURE_VALUES", feature_values
 
         squared_feature_norm = np.dot(feature_values, feature_values)
         median_w_m_ema = 0
@@ -149,8 +146,19 @@ class Network(object):
             g[1] = (MOVING_AVERAGE_ALPHA * abs(g[0])
                     + (1 - MOVING_AVERAGE_ALPHA) * g[1])
 
-        weight_magnitude_emas = [val[1] for val in self.genome_archive.values()]
-        return (error**2, weight_magnitude_emas)
+        #weight_magnitude_emas = [val[1] for val in self.genome_archive.values()]
+        return error**2
+
+    def activate(self, genome_list, input_vals):
+        feature_values = self.calculate_feature_values(genome_list, input_vals)
+        for i in range(len(genome_list)):
+            g_id = genome_list[i].GetID()
+            if g_id not in self.genome_archive:
+                self.genome_archive[g_id] = [0.0, median_w_m_ema]
+
+        output_weights = [self.genome_archive[g.GetID()][0] for g in genome_list]               
+
+        return np.dot(feature_values, output_weights)
 
 # TODO: Move to function, make module conveniently callable, and move
 # experiment code in different file.
@@ -159,30 +167,8 @@ if __name__ == "__main__":
 
     #substrate = NEAT.Substrate([(0,-2), (0,-1), (0,0), (0,1), (0,2)],
     substrate = NEAT.Substrate([(0,-1), (0,0), (0,1)],
-                               [(1,0)],
+                               [], # TODO
                                [(2,0)])
-
-    substrate.m_allow_input_hidden_links = False
-    substrate.m_allow_input_output_links = False
-    substrate.m_allow_hidden_hidden_links = False
-    substrate.m_allow_hidden_output_links = False
-    substrate.m_allow_output_hidden_links = False
-    substrate.m_allow_output_output_links = False
-    substrate.m_allow_looped_hidden_links = False
-    substrate.m_allow_looped_output_links = False
-
-    # let's configure it a bit to avoid recurrence in the substrate
-    substrate.m_allow_input_hidden_links = True
-    substrate.m_allow_hidden_output_links = True
-    # let's set the activation functions
-   # substrate.m_hidden_nodes_activation = NEAT.ActivationFunction.TANH
-    substrate.m_outputs_nodes_activation = NEAT.ActivationFunction.SIGNED_SIGMOID
-    """
-
-    # when to output a link and max weight
-    substrate.m_link_threshold = 0.2 
-    substrate.m_max_weight = 8.0 
-    """
 
     genome = NEAT.Genome(0,
         substrate.GetMinCPPNInputs(),
@@ -196,7 +182,7 @@ if __name__ == "__main__":
 
     pop = NEAT.Population(genome, params, True, 1.0)
 
-    net = Network(substrate, 5)
+    net = Network(substrate, 10)
 
     #### Creating random function, code stolen from oeelm.py
     import oeelm # J. Auerbach
@@ -228,10 +214,28 @@ if __name__ == "__main__":
         #target = target_func.get_output(rand_input) # TODO: Add noise?
         rand_input, target = xorpatterns[rng.randint(0, len(xorpatterns))]
          
-        mse, fitnesses = net.train(genome_list, rand_input, target, generation)
-        zip_fitness(genome_list, fitnesses)
+        mse = net.train(genome_list, rand_input, target, generation)
+        for genome in genome_list:
+            fitness = net.genome_archive[genome.GetID()][1]
+            genome.SetFitness(fitness)
+            genome.SetEvaluated()
 
         print "MSE:", mse
 
+        error = 0
+        print "=============================="
+        for pattern in xorpatterns:
+            output = net.activate(genome_list, pattern[0])
+            
+            error += abs(output-pattern[1]-pattern[1])
+
+            print "TARGET:", pattern[1]
+            print "OUTPUT:", output
+        print "=============================="
+
+        print "XOR:",(4-error)
+
         deleted_genome = NEAT.Genome()
         new_genome = pop.Tick(deleted_genome)
+
+        del net.genome_archive[deleted_genome.GetID()]
