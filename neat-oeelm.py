@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import numpy as np
 import MultiNEAT as NEAT
+from mnist import load_mnist, mnist_substrate
 
 import warnings
 warnings.simplefilter("error")
@@ -18,7 +19,7 @@ MOVING_AVERAGE_ALPHA = 0.1
 
 def get_NEAT_params():
     params = NEAT.Parameters()
-    params.PopulationSize = 10
+    params.PopulationSize = 100
     """
     params.YoungAgeFitnessBoost = 1.0 # No boost
 
@@ -44,8 +45,8 @@ def get_NEAT_params():
 
     params.MutateActivationAProb = 0.0
     params.ActivationAMutationMaxPower = 0.5
-    params.MinActivationA = -2.0 # TODO
-    params.MaxActivationA = 6.0
+    params.MinActivationA = 0.0 # TODO
+    params.MaxActivationA = 10.0
 
     params.MutateNeuronActivationTypeProb = 0.03;
 
@@ -89,8 +90,7 @@ class Network(object):
 
             # TODO: See if this can be moved outside loop.
             feature = NEAT.NeuralNetwork()
-            genome.BuildHyperNEATPhenotype(feature, self.substrate)
-
+            genome.BuildHyperNEATPhenotype(feature, self.substrate) 
             """
             img = np.zeros((250,250,3), dtype=np.uint8)
             img += 10
@@ -100,7 +100,8 @@ class Network(object):
             """
 
             feature.Flush()
-            feature.Input(input_vals)
+            # TODO: Flattening here is a bit stupid...
+            feature.Input(input_vals.flatten())
             # FIXME: See if this is really necessary.
             for _ in range(2): # This is supposed to be depth? Can one use genome.GetDepth or something?
                 feature.Activate()
@@ -166,9 +167,13 @@ if __name__ == "__main__":
     params = get_NEAT_params()
 
     #substrate = NEAT.Substrate([(0,-2), (0,-1), (0,0), (0,1), (0,2)],
-    substrate = NEAT.Substrate([(0,-1), (0,0), (0,1)],
+    #substrate = NEAT.Substrate([(0,-1), (0,0), (0,1)],
+    substrate = NEAT.Substrate(mnist_substrate,
                                [], # TODO
                                [(2,0)])
+
+    #substrate.m_hidden_nodes_activation = NEAT.ActivationFunction.TANH
+    #substrate.m_outputs_nodes_activation = NEAT.ActivationFunction.UNSIGNED_SIGMOID
 
     genome = NEAT.Genome(0,
         substrate.GetMinCPPNInputs(),
@@ -182,7 +187,7 @@ if __name__ == "__main__":
 
     pop = NEAT.Population(genome, params, True, 1.0)
 
-    net = Network(substrate, 10)
+    net = Network(substrate, 100)
 
     #### Creating random function, code stolen from oeelm.py
     import oeelm # J. Auerbach
@@ -204,6 +209,11 @@ if __name__ == "__main__":
     xorpatterns = [([1., 0., 1.], 1.), ([0., 1., 1.], 1.), ([1., 1., 1.], 0.), ([0., 0., 1.], 0.)] 
     ###########################
 
+    #### MNIST
+    images, labels = load_mnist(path="mnistdata")
+    images /= 255.0
+    ###########################
+
     for generation in range(GENERATIONS):
         genome_list = NEAT.GetGenomeList(pop)
 
@@ -212,7 +222,9 @@ if __name__ == "__main__":
 
         #rand_input = rng.rand(5)
         #target = target_func.get_output(rand_input) # TODO: Add noise?
-        rand_input, target = xorpatterns[rng.randint(0, len(xorpatterns))]
+        #rand_input, target = xorpatterns[rng.randint(0, len(xorpatterns))]
+        imgn = generation % len(images)
+        rand_input, target = images[imgn], labels[imgn][0]
          
         mse = net.train(genome_list, rand_input, target, generation)
         for genome in genome_list:
@@ -222,6 +234,7 @@ if __name__ == "__main__":
 
         print "MSE:", mse
 
+        """
         error = 0
         print "=============================="
         for pattern in xorpatterns:
@@ -234,6 +247,7 @@ if __name__ == "__main__":
         print "=============================="
 
         print "XOR:",(4-error)
+        """
 
         deleted_genome = NEAT.Genome()
         new_genome = pop.Tick(deleted_genome)
