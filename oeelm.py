@@ -12,8 +12,7 @@ cv2.namedWindow('NN', 0)
 cv2.namedWindow('CPPN', 0)
 """
 
-# TODO Move all params to files.
-GENERATIONS = 10000000
+# TODO Make this settable params
 BASE_LEARNING_RATE = 0.1
 MOVING_AVERAGE_ALPHA = 0.1
 
@@ -23,9 +22,6 @@ class Network(object):
         self.nfeatures = nfeatures
         self.output_weights = np.zeros(nfeatures) # TODO: Include bias.
         self.squared_norm_ema = 0.0
-        # TODO: This will continuously grow each generation.
-        # An ID that disappears one generation will probably not come back,
-        # so can just delete it.
         # TODO: Now that we use .Tick(), we might be able to keep track of this
         # in a better way.
         self.genome_archive = {} # gID: [weight, weight_magnitude_ema]
@@ -54,8 +50,6 @@ class Network(object):
             """
 
             feature.Flush()
-            # TODO: Flattening here is a bit stupid...
-            #feature.Input(input_vals.flatten())
             feature.Input(input_vals)
             # FIXME: See if this is really necessary.
             for _ in range(2): # This is supposed to be depth? Can one use genome.GetDepth or something?
@@ -89,9 +83,6 @@ class Network(object):
 
         output_weights = [self.genome_archive[g.GetID()][0] for g in genome_list]               
         output = np.dot(feature_values, output_weights)
-        print "target:", target
-        print "output:", output
-        #print "error:", target-output
         error = target - output
         
         # TODO: Do backprop?
@@ -102,7 +93,6 @@ class Network(object):
             g[1] = (MOVING_AVERAGE_ALPHA * abs(g[0])
                     + (1 - MOVING_AVERAGE_ALPHA) * g[1])
 
-        #weight_magnitude_emas = [val[1] for val in self.genome_archive.values()]
         return error**2, output
 
     def activate(self, genome_list, input_vals):
