@@ -55,13 +55,17 @@ class Network(object):
         # TODO: Do backprop?
 
         for i in xrange(len(genome_list)):
-            g = self.genome_archive[genome_list[i].GetID()]
+            genome = genome_list[i]
+            g = self.genome_archive[genome.GetID()]
             self.output_weights[g[0]] += \
                     learning_rate * error * self.feature_values[g[0]]
             self.weight_magnitude_emas[g[0]] = \
                     (MOVING_AVERAGE_ALPHA * abs(self.output_weights[g[0]])
                     + (1 - MOVING_AVERAGE_ALPHA) \
                             * self.weight_magnitude_emas[g[0]])
+
+            genome.SetFitness(self.weight_magnitude_emas[g[0]])
+            genome.SetEvaluated()
 
         return error**2, output
 
@@ -87,7 +91,6 @@ class NEATOeelm(object):
 
         squared_error, output = self.net.train(genome_list, input_data, target,
                                      self.generation)
-        self._zip_fitness(genome_list)
 
         deleted_genome = NEAT.Genome()
         new_genome = self.population.Tick(deleted_genome)
@@ -113,10 +116,3 @@ class NEATOeelm(object):
                 feature = NEAT.NeuralNetwork()
                 genome_list[i].BuildHyperNEATPhenotype(feature, self.substrate)
                 self.net.genome_archive[g_id] = [i, feature]
-
-    def _zip_fitness(self, genome_list):
-        for genome in genome_list:
-            idx = self.net.genome_archive[genome.GetID()][0]
-            fitness = self.net.weight_magnitude_emas[idx]
-            genome.SetFitness(fitness)
-            genome.SetEvaluated()
