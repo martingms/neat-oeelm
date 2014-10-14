@@ -13,23 +13,22 @@ class Network(object):
     def __init__(self, substrate, nfeatures):
         self.substrate = substrate
         self.nfeatures = nfeatures
+        self.feature_values = np.zeros(nfeatures) # TODO: Include bias.
         self.output_weights = np.zeros(nfeatures) # TODO: Include bias.
         self.squared_norm_ema = 0.0
-        # TODO: Now that we use .Tick(), we might be able to keep track of this
-        # in a better way.
-        self.genome_archive = {} # gID: [weight, weight_magnitude_ema, feature_net]
+        self.genome_archive = {} # gID: [index, weight_magnitude_ema, feature_net]
 
     def _calculate_feature_values(self, genome_list, input_vals):
-        def evaluate(genome):
+        for genome in genome_list:
             feature = self.genome_archive[genome.GetID()][2]
             feature.Flush()
             feature.Input(input_vals)
             # FIXME: Depth should not be hardcoded.
             for _ in xrange(2): # This is supposed to be depth? Can one use genome.GetDepth or something?
                 feature.Activate()
-            return feature.Output()[0]
 
-        return np.asarray([evaluate(genome) for genome in genome_list])
+            idx = self.genome_archive[genome.GetID()][0]
+            self.feature_values[idx] = feature.Output()[0]
 
     def median_weight_magnitudes_ema(self):
         return np.median([val[1] for val in self.genome_archive.values()])
@@ -37,9 +36,9 @@ class Network(object):
     def train(self, genome_list, input_vals, target, iteration):
         # TODO: genome_archive is a quite ugly hack.
         assert(len(genome_list) == len(self.output_weights))
-        feature_values = self._calculate_feature_values(genome_list, input_vals)
+        self._calculate_feature_values(genome_list, input_vals)
 
-        squared_feature_norm = np.dot(feature_values, feature_values)
+        squared_feature_norm = np.dot(self.feature_values, self.feature_values)
 
         if iteration == 0:
             self.squared_norm_ema = squared_feature_norm
@@ -49,25 +48,24 @@ class Network(object):
 
         learning_rate = BASE_LEARNING_RATE / self.squared_norm_ema
 
-        output_weights = [self.genome_archive[g.GetID()][0] for g in genome_list]               
-        output = np.dot(feature_values, output_weights)
+        output = np.dot(self.feature_values, self.output_weights)
         error = target - output
         
         # TODO: Do backprop?
 
         for i in xrange(len(genome_list)):
             g = self.genome_archive[genome_list[i].GetID()]
-            g[0] += learning_rate * error * feature_values[i]
-            g[1] = (MOVING_AVERAGE_ALPHA * abs(g[0])
+            self.output_weights[g[0]] += \
+                    learning_rate * error * self.feature_values[g[0]]
+            g[1] = (MOVING_AVERAGE_ALPHA * abs(self.output_weights[g[0]])
                     + (1 - MOVING_AVERAGE_ALPHA) * g[1])
 
         return error**2, output
 
     def activate(self, genome_list, input_vals):
-        feature_values = self._calculate_feature_values(genome_list, input_vals)
-        output_weights = [self.genome_archive[g.GetID()][0] for g in genome_list]               
+        self._calculate_feature_values(genome_list, input_vals)
 
-        return np.dot(feature_values, output_weights)
+        return np.dot(self.feature_values, self.output_weights)
 
 class NEATOeelm(object):
     def __init__(self, neat_params, neat_genome, neat_substrate, noutputs):
@@ -90,28 +88,30 @@ class NEATOeelm(object):
 
         deleted_genome = NEAT.Genome()
         new_genome = self.population.Tick(deleted_genome)
-        del self.net.genome_archive[deleted_genome.GetID()]
         # TODO: Move to function. Does same in _init_genome_archive
+        old_idx = self.net.genome_archive[deleted_genome.GetID()][0]
         feature = NEAT.NeuralNetwork()
         new_genome.BuildHyperNEATPhenotype(feature, self.substrate)
         self.net.genome_archive[new_genome.GetID()] = [
-                0.0,
+                old_idx,
                 self.net.median_weight_magnitudes_ema(),
                 feature     
         ]
+        self.net.output_weights[old_idx] = 0.0
+        del self.net.genome_archive[deleted_genome.GetID()]
 
         self.generation += 1
 
         return (squared_error, output)
 
     def _init_genome_archive(self, genome_list):
-        for genome in genome_list:
-            g_id = genome.GetID()
+        for i in xrange(len(genome_list)):
+            g_id = genome_list[i].GetID()
             if g_id not in self.net.genome_archive:
                 feature = NEAT.NeuralNetwork()
-                genome.BuildHyperNEATPhenotype(feature, self.substrate) 
+                genome_list[i].BuildHyperNEATPhenotype(feature, self.substrate)
                 self.net.genome_archive[g_id] = [
-                        0.0,
+                        i,
                         0.0,
                         feature
                 ]
