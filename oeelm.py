@@ -5,12 +5,6 @@ import MultiNEAT as NEAT
 import warnings
 warnings.simplefilter("error")
 
-"""
-import cv2
-cv2.namedWindow('NN', 0)
-cv2.namedWindow('CPPN', 0)
-"""
-
 # TODO Make these settable params
 BASE_LEARNING_RATE = 0.1
 MOVING_AVERAGE_ALPHA = 0.1
