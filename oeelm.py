@@ -30,8 +30,8 @@ class Network(object):
             feature = self.genome_archive[genome.GetID()][2]
             feature.Flush()
             feature.Input(input_vals)
-            # FIXME: See if this is really necessary.
-            for _ in range(2): # This is supposed to be depth? Can one use genome.GetDepth or something?
+            # FIXME: Depth should not be hardcoded.
+            for _ in xrange(2): # This is supposed to be depth? Can one use genome.GetDepth or something?
                 feature.Activate()
             return feature.Output()[0]
 
@@ -61,7 +61,7 @@ class Network(object):
         
         # TODO: Do backprop?
 
-        for i in range(len(genome_list)):
+        for i in xrange(len(genome_list)):
             g = self.genome_archive[genome_list[i].GetID()]
             g[0] += learning_rate * error * feature_values[i]
             g[1] = (MOVING_AVERAGE_ALPHA * abs(g[0])
