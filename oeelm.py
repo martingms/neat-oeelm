@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 import numpy as np
 import MultiNEAT as NEAT
-from mnist import load_mnist, mnist_substrate
 
 import warnings
 warnings.simplefilter("error")
@@ -12,7 +11,7 @@ cv2.namedWindow('NN', 0)
 cv2.namedWindow('CPPN', 0)
 """
 
-# TODO Make this settable params
+# TODO Make these settable params
 BASE_LEARNING_RATE = 0.1
 MOVING_AVERAGE_ALPHA = 0.1
 
