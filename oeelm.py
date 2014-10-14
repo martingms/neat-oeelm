@@ -70,12 +70,7 @@ class Network(object):
         return error**2, output
 
     def activate(self, genome_list, input_vals):
-        feature_values = self.calculate_feature_values(genome_list, input_vals)
-        for i in range(len(genome_list)):
-            g_id = genome_list[i].GetID()
-            if g_id not in self.genome_archive:
-                self.genome_archive[g_id] = [0.0, median_w_m_ema]
-
+        feature_values = self._calculate_feature_values(genome_list, input_vals)
         output_weights = [self.genome_archive[g.GetID()][0] for g in genome_list]               
 
         return np.dot(feature_values, output_weights)
