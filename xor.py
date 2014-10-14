@@ -2,8 +2,9 @@ import oeelm
 import numpy as np
 import MultiNEAT as NEAT
 import random
+import time
 
-random.seed(0)
+random.seed(int(time.time()))
 
 params = NEAT.Parameters()
 params.PopulationSize = 100
@@ -49,7 +50,7 @@ xorpatterns = [([1., 0., 1.], 1.), ([0., 1., 1.], 1.),
 
 no = oeelm.NEATOeelm(params, genome, substrate, 1)
 
-for generation in range(10000):
+for generation in range(5000):
     rand_input, target = xorpatterns[random.randint(0,3)]
     err, output = no.train(rand_input, target)
 
