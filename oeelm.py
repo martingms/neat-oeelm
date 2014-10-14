@@ -15,12 +15,13 @@ class Network(object):
         self.nfeatures = nfeatures
         self.feature_values = np.zeros(nfeatures) # TODO: Include bias.
         self.output_weights = np.zeros(nfeatures) # TODO: Include bias.
+        self.weight_magnitude_emas = np.zeros(nfeatures)
         self.squared_norm_ema = 0.0
-        self.genome_archive = {} # gID: [index, weight_magnitude_ema, feature_net]
+        self.genome_archive = {} # gID: [index, feature_net]
 
     def _calculate_feature_values(self, genome_list, input_vals):
         for genome in genome_list:
-            feature = self.genome_archive[genome.GetID()][2]
+            feature = self.genome_archive[genome.GetID()][1]
             feature.Flush()
             feature.Input(input_vals)
             # FIXME: Depth should not be hardcoded.
@@ -31,7 +32,7 @@ class Network(object):
             self.feature_values[idx] = feature.Output()[0]
 
     def median_weight_magnitudes_ema(self):
-        return np.median([val[1] for val in self.genome_archive.values()])
+        return np.median(self.weight_magnitude_emas)
 
     def train(self, genome_list, input_vals, target, iteration):
         # TODO: genome_archive is a quite ugly hack.
@@ -57,8 +58,10 @@ class Network(object):
             g = self.genome_archive[genome_list[i].GetID()]
             self.output_weights[g[0]] += \
                     learning_rate * error * self.feature_values[g[0]]
-            g[1] = (MOVING_AVERAGE_ALPHA * abs(self.output_weights[g[0]])
-                    + (1 - MOVING_AVERAGE_ALPHA) * g[1])
+            self.weight_magnitude_emas[g[0]] = \
+                    (MOVING_AVERAGE_ALPHA * abs(self.output_weights[g[0]])
+                    + (1 - MOVING_AVERAGE_ALPHA) \
+                            * self.weight_magnitude_emas[g[0]])
 
         return error**2, output
 
@@ -90,15 +93,14 @@ class NEATOeelm(object):
         new_genome = self.population.Tick(deleted_genome)
         # TODO: Move to function. Does same in _init_genome_archive
         old_idx = self.net.genome_archive[deleted_genome.GetID()][0]
+        del self.net.genome_archive[deleted_genome.GetID()]
+
         feature = NEAT.NeuralNetwork()
         new_genome.BuildHyperNEATPhenotype(feature, self.substrate)
-        self.net.genome_archive[new_genome.GetID()] = [
-                old_idx,
-                self.net.median_weight_magnitudes_ema(),
-                feature     
-        ]
+        self.net.genome_archive[new_genome.GetID()] = [old_idx, feature]
         self.net.output_weights[old_idx] = 0.0
-        del self.net.genome_archive[deleted_genome.GetID()]
+        self.net.weight_magnitude_emas[old_idx] = \
+                self.net.median_weight_magnitudes_ema()
 
         self.generation += 1
 
@@ -110,14 +112,11 @@ class NEATOeelm(object):
             if g_id not in self.net.genome_archive:
                 feature = NEAT.NeuralNetwork()
                 genome_list[i].BuildHyperNEATPhenotype(feature, self.substrate)
-                self.net.genome_archive[g_id] = [
-                        i,
-                        0.0,
-                        feature
-                ]
+                self.net.genome_archive[g_id] = [i, feature]
 
     def _zip_fitness(self, genome_list):
         for genome in genome_list:
-            fitness = self.net.genome_archive[genome.GetID()][1]
+            idx = self.net.genome_archive[genome.GetID()][0]
+            fitness = self.net.weight_magnitude_emas[idx]
             genome.SetFitness(fitness)
             genome.SetEvaluated()
