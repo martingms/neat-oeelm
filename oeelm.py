@@ -34,8 +34,7 @@ class Network(object):
         return np.median(self.weight_magnitude_emas)
 
     def train(self, genome_list, input_vals, target, iteration):
-        # TODO: genome_archive is a quite ugly hack.
-        assert(len(genome_list) == len(self.output_weights))
+        assert len(genome_list) == len(self.output_weights)
         self._calculate_feature_values(genome_list, input_vals)
 
         squared_feature_norm = np.dot(self.feature_values, self.feature_values)
@@ -83,9 +82,10 @@ class NEATOeelm(object):
 
     def train(self, input_data, target):
         genome_list = NEAT.GetGenomeList(self.population)
+        assert len(genome_list) == self.net.nfeatures
+
         if self.generation == 0:
             self._init_genome_archive(genome_list)
-        assert(len(genome_list) == self.net.nfeatures)
 
         squared_error, output = self.net.train(genome_list, input_data, target,
                                      self.generation)
