@@ -45,8 +45,8 @@ genome = NEAT.Genome(0,
                      params)
 
 
-xorpatterns = [([1., 0., 1.], 1.), ([0., 1., 1.], 1.),
-               ([1., 1., 1.], 0.), ([0., 0., 1.], 0.)]
+xorpatterns = [([1., 0., 1.], [1.]), ([0., 1., 1.], [1.]),
+               ([1., 1., 1.], [0.]), ([0., 0., 1.], [0.])]
 
 no = oeelm.NEATOeelm(params, genome, substrate, 1)
 

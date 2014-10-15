@@ -10,11 +10,10 @@ BASE_LEARNING_RATE = 0.1
 MOVING_AVERAGE_ALPHA = 0.1
 
 class Network(object):
-    def __init__(self, substrate, nfeatures):
-        self.substrate = substrate
+    def __init__(self, nfeatures, noutputs):
         self.nfeatures = nfeatures
         self.feature_values = np.zeros(nfeatures) # TODO: Include bias.
-        self.output_weights = np.zeros(nfeatures) # TODO: Include bias.
+        self.output_weights = np.zeros((nfeatures, noutputs)) # TODO: Include bias.
         self.weight_magnitude_emas = np.zeros(nfeatures)
         self.squared_norm_ema = 0.0
         self.genome_archive = {} # gID: [index, feature_net]
@@ -60,7 +59,7 @@ class Network(object):
             self.output_weights[g[0]] += \
                     learning_rate * error * self.feature_values[g[0]]
             self.weight_magnitude_emas[g[0]] = \
-                    (MOVING_AVERAGE_ALPHA * abs(self.output_weights[g[0]])
+                    (MOVING_AVERAGE_ALPHA * abs(max(self.output_weights[g[0]])) #TODO: is max the best way?
                     + (1 - MOVING_AVERAGE_ALPHA) \
                             * self.weight_magnitude_emas[g[0]])
 
@@ -77,9 +76,8 @@ class Network(object):
 class NEATOeelm(object):
     def __init__(self, neat_params, neat_genome, neat_substrate, noutputs):
         self.population = NEAT.Population(neat_genome, neat_params, True, 1.0)
-        self.noutputs = noutputs
         self.substrate = neat_substrate
-        self.net = Network(neat_substrate, neat_params.PopulationSize)
+        self.net = Network(neat_params.PopulationSize, noutputs)
         # TODO: Should this be here or left to caller?
         self.generation = 0
 

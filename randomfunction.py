@@ -59,7 +59,7 @@ no = oeelm.NEATOeelm(params, genome, substrate, 1)
 for generation in range(1000000):
     rand_input = rng.rand(5)
     target = target_func.get_output(rand_input)
-    err, output = no.train(rand_input, target)
+    err, output = no.train(rand_input, [target])
 
     print "========================================="
     print "GENERATION:", generation
