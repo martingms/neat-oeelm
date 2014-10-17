@@ -87,8 +87,8 @@ class NEATOeelm(object):
         if self.generation == 0:
             self._init_genome_archive(genome_list)
 
-        squared_error, output = self.net.train(genome_list, input_data, target,
-                                     self.generation)
+        squared_error, output = self.net.train(genome_list, input_data,
+                                               target, self.generation)
 
         deleted_genome = NEAT.Genome()
         new_genome = self.population.Tick(deleted_genome)
