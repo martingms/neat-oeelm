@@ -107,6 +107,10 @@ class NEATOeelm(object):
 
         return (squared_error, output)
 
+    def activate(self, input_vals):
+        genome_list = NEAT.GetGenomeList(self.population)
+        return self.net.activate(genome_list, input_vals)
+
     def _init_genome_archive(self, genome_list):
         for i in xrange(len(genome_list)):
             g_id = genome_list[i].GetID()
