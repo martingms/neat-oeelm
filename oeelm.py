@@ -12,8 +12,9 @@ MOVING_AVERAGE_ALPHA = 0.1
 class Network(object):
     def __init__(self, nfeatures, noutputs):
         self.nfeatures = nfeatures
-        self.feature_values = np.zeros(nfeatures) # TODO: Include bias.
-        self.output_weights = np.zeros((nfeatures, noutputs)) # TODO: Include bias.
+        self.feature_values = np.zeros(nfeatures + 1) # TODO: Include bias.
+        self.feature_values[-1] = 1.
+        self.output_weights = np.zeros((nfeatures + 1, noutputs)) # TODO: Include bias.
         self.weight_magnitude_emas = np.zeros(nfeatures)
         self.squared_norm_ema = 0.0
         self.genome_archive = {} # gID: [index, feature_net]
@@ -34,7 +35,7 @@ class Network(object):
         return np.median(self.weight_magnitude_emas)
 
     def train(self, genome_list, input_vals, target, iteration):
-        assert len(genome_list) == len(self.output_weights)
+        #assert len(genome_list) == len(self.output_weights)
         self._calculate_feature_values(genome_list, input_vals)
 
         squared_feature_norm = np.dot(self.feature_values, self.feature_values)
@@ -65,6 +66,8 @@ class Network(object):
             genome.SetFitness(self.weight_magnitude_emas[g[0]])
             genome.SetEvaluated()
 
+        self.output_weights[-1] += learning_rate * error * 1.
+
         return error**2, output
 
     def activate(self, genome_list, input_vals):
@@ -82,7 +85,7 @@ class NEATOeelm(object):
 
     def train(self, input_data, target):
         genome_list = NEAT.GetGenomeList(self.population)
-        assert len(genome_list) == self.net.nfeatures
+        #assert len(genome_list) == self.net.nfeatures
 
         if self.generation == 0:
             self._init_genome_archive(genome_list)
