@@ -5,32 +5,25 @@ import random
 import time
 from mnist import mnist_substrate, load_mnist
 
-
 random.seed(int(time.time()))
 
 params = NEAT.Parameters()
 params.PopulationSize = 1000
 params.YoungAgeFitnessBoost = 1.0
-
-params.MutateActivationAProb = 0.0
-params.ActivationAMutationMaxPower = 0.5
-params.MinActivationA = 0.0 # TODO
-params.MaxActivationA = 10.0
-
-params.MutateNeuronActivationTypeProb = 0.03;
+params.CrossoverRate = 0.10
 
 # Probabilities for a particular activation function appearance
 params.ActivationFunction_SignedSigmoid_Prob = 0.0;
-params.ActivationFunction_UnsignedSigmoid_Prob = 0.0;
+params.ActivationFunction_UnsignedSigmoid_Prob = 1.0;
 params.ActivationFunction_Tanh_Prob = 1.0;
 params.ActivationFunction_TanhCubic_Prob = 0.0;
-params.ActivationFunction_SignedStep_Prob = 1.0;
-params.ActivationFunction_UnsignedStep_Prob = 0.0;
-params.ActivationFunction_SignedGauss_Prob = 1.0;
+params.ActivationFunction_SignedStep_Prob = 0.0;
+params.ActivationFunction_UnsignedStep_Prob = 1.0;
+params.ActivationFunction_SignedGauss_Prob = 0.0;
 params.ActivationFunction_UnsignedGauss_Prob = 0.0;
 params.ActivationFunction_Abs_Prob = 0.0;
-params.ActivationFunction_SignedSine_Prob = 1.0;
-params.ActivationFunction_UnsignedSine_Prob = 0.0;
+params.ActivationFunction_SignedSine_Prob = 0.0;
+params.ActivationFunction_UnsignedSine_Prob = 1.0;
 params.ActivationFunction_Linear_Prob = 1.0;
 
 substrate = NEAT.Substrate(mnist_substrate,
@@ -42,8 +35,8 @@ genome = NEAT.Genome(0,
                      0,
                      substrate.GetMinCPPNOutputs(),
                      False,
-                     NEAT.ActivationFunction.SIGNED_SIGMOID,
-                     NEAT.ActivationFunction.SIGNED_SIGMOID,
+                     NEAT.ActivationFunction.UNSIGNED_SIGMOID,
+                     NEAT.ActivationFunction.UNSIGNED_SIGMOID,
                      0,
                      params)
 
@@ -63,11 +56,11 @@ for generation in xrange(len(images)):
 
     print "E1:Generation:", generation, "/", len(images)
 
+    """
 for generation in xrange(len(images)):
     err, output = no.train(images[generation], splitlabels[generation])
 
     print "E2:Generation:", generation, "/", len(images)
-    """
     print "========================================="
     print "INPUT:", "... some image"
     print "TARGET:", splitlabels[generation], labels[generation]
