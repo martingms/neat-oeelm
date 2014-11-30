@@ -49,6 +49,7 @@ class Network(object):
         learning_rate = BASE_LEARNING_RATE / self.squared_norm_ema
 
         output = np.dot(self.feature_values, self.output_weights)
+        output = (1. / (1 + np.exp(-1.0 * output)))
         error = target - output
         
         # TODO: Do backprop?
@@ -59,7 +60,7 @@ class Network(object):
             self.output_weights[g[0]] += \
                     learning_rate * error * self.feature_values[g[0]]
             self.weight_magnitude_emas[g[0]] = \
-                    (MOVING_AVERAGE_ALPHA * abs(max(self.output_weights[g[0]])) #TODO: is max the best way?
+                    (MOVING_AVERAGE_ALPHA * max(abs(self.output_weights[g[0]])) # max/abs changed
                     + (1 - MOVING_AVERAGE_ALPHA) \
                             * self.weight_magnitude_emas[g[0]])
 
@@ -73,7 +74,9 @@ class Network(object):
     def activate(self, genome_list, input_vals):
         self._calculate_feature_values(genome_list, input_vals)
 
-        return np.dot(self.feature_values, self.output_weights)
+        output = np.dot(self.feature_values, self.output_weights)
+        #return output#(1. / (1 + np.exp(-1.0 * output)))
+        return (1. / (1 + np.exp(-1.0 * output)))
 
 class NEATOeelm(object):
     def __init__(self, neat_params, neat_genome, neat_substrate, noutputs):
@@ -102,6 +105,8 @@ class NEATOeelm(object):
         feature = NEAT.NeuralNetwork()
         new_genome.BuildHyperNEATPhenotype(feature, self.substrate)
         self.net.genome_archive[new_genome.GetID()] = [old_idx, feature]
+        # FIXME: Shouldn't this be np.zeros(noutputs)?
+        # Supposedly works with numpy.
         self.net.output_weights[old_idx] = 0.0
         self.net.weight_magnitude_emas[old_idx] = \
                 self.net.median_weight_magnitudes_ema()
