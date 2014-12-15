@@ -10,7 +10,7 @@ random.seed(int(time.time()))
 params = NEAT.Parameters()
 params.PopulationSize = 1000
 params.YoungAgeFitnessBoost = 1.0
-params.CrossoverRate = 0.10
+params.CrossoverRate = 0.20
 
 # Probabilities for a particular activation function appearance
 params.ActivationFunction_SignedSigmoid_Prob = 0.0;
@@ -51,6 +51,7 @@ for generation in xrange(len(images)):
         target = 0
 
     err, output = no.train(images[generation], [target])
+    print len(images[generation])
 
     print "Generation:", generation, "/", len(images), "Output:", output, "Target:", target, "Err:", err
 
