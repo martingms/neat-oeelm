@@ -109,8 +109,8 @@ class Network(object):
         return _sigmoid(output)
 
 class NEATOeelm(object):
-    def __init__(self, neat_params, neat_genome, neat_substrate, ninputs, noutputs):
-        self.population = NEAT.Population(neat_genome, neat_params, True, 1.0)
+    def __init__(self, neat_params, neat_genome, neat_substrate, ninputs, noutputs, precomplexify=0):
+        self.population = NEAT.Population(neat_genome, neat_params, True, 10.0)
 
         assert len(neat_substrate) == ninputs
         self.ninputs = ninputs
@@ -119,8 +119,17 @@ class NEATOeelm(object):
         self.net = Network(ninputs, neat_params.PopulationSize, noutputs)
         # TODO: Should this be here or left to caller?
         self.generation = 0
-        genome_list = NEAT.GetGenomeList(self.population)
-        self._init_genome_archive(genome_list)
+        #genome_list = NEAT.GetGenomeList(self.population)
+
+        for i in xrange(precomplexify):
+            genome_list = NEAT.GetGenomeList(self.population)
+            for genome in genome_list:
+                genome.SetFitness(np.random.rand(1)[0])
+            self.population.Epoch()
+            if i % 10 == 0:
+                print "Complexifying round:", i
+
+        self._init_genome_archive()
 
     def train(self, input_data, target):
         genome_list = NEAT.GetGenomeList(self.population)
@@ -159,7 +168,8 @@ class NEATOeelm(object):
     def _generate_feature_weights(self, genome):
         cppn = NEAT.NeuralNetwork()
         genome.BuildPhenotype(cppn)
-        genome.CalculateDepth()
+        # FIXME: Why doesn't this work?
+        #genome.CalculateDepth()
 
         assert len(self.substrate) == self.ninputs
         for i in xrange(self.ninputs):
@@ -195,10 +205,17 @@ class NEATOeelm(object):
                 output
 
 
-    def _init_genome_archive(self, genome_list):
+    def _init_genome_archive(self):
+        genome_list = NEAT.GetGenomeList(self.population)
+        print "len(genome_list)", len(genome_list)
+        if len(genome_list) > 1000:
+            genome_list = genome_list[1000:]
+        print "unique", len(np.unique([g.GetID() for g in genome_list]))
+        print "self.net.genome_archive", self.net.genome_archive
         for i in xrange(len(genome_list)):
             g_id = genome_list[i].GetID()
-            assert g_id not in self.net.genome_archive
+            # TODO: When doing complexifying they are not unique.
+            #assert g_id not in self.net.genome_archive
 
             self.net.genome_archive[g_id] = i
             self._generate_feature_weights(genome_list[i])
