@@ -1,0 +1,122 @@
+\documentclass[a4paper,oneside]{report}
+
+%LATEX TEMPLATE FOR SEMESTER / DIPLOMA PROJECTS SUMMARIES
+%Original from ASL, debugged and adapted for LIS by WK
+
+\usepackage[dvips]{graphicx}
+\usepackage[utf8]{inputenc}
+\usepackage{multicol}
+\DeclareUnicodeCharacter{00A0}{ }
+
+\addtolength{\textwidth}{4cm}
+\addtolength{\oddsidemargin}{-1.5cm}
+\addtolength{\evensidemargin}{-1.5cm}
+\addtolength{\textheight}{4.5cm}
+\addtolength{\topmargin}{-3cm}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{1ex}
+\pagestyle{empty}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Macros that are filled into the standard text:
+
+%% Things that change for each project:
+\newcommand{\Ptype}{SEMESTER} %SEMESTER
+\newcommand{\Ptitle}{Incredible evolution of flying turtle robots}
+\newcommand{\Pcand}{Martin Gammelsæter}
+\newcommand{\Psect}{Microtechnique}
+\newcommand{\Pprof}{Dario Floreano}
+\newcommand{\Pfirst}{Joshua Auerbach}
+\newcommand{\Psecond}{Giovanni Iacca}
+
+%% Dates that depend only on the semester:
+\newcommand{\Pseason}{FALL 2014} %put here the semester name
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% You won't need to edit anything until the next
+%% big remark...
+
+\begin{document}
+\raisebox{10mm}{%
+  \footnotesize
+  \begin{tabular}{@{\hspace{0pt}}l@{\hspace{0pt}}}
+    %\hline
+    \\\\\\
+   
+   \raisebox{-0.5ex}{\textbf{FACULTE SCIENCES ET TECHNIQUES DE L'INGENIEUR}}\\
+    \hline
+    
+    \raisebox{-1.2ex}{LABORATORY OF INTELLIGENT SYSTEMS (LIS)}\\
+    \scriptsize Station 11 \\
+    \scriptsize CH-1015 LAUSANNE
+  \end{tabular}%
+}
+\hfill
+\includegraphics[width=0.3\columnwidth]{logo_epfl_gray}
+
+\begin{center}
+\begin{tabular}{|*{2}{p{0.17\columnwidth}p{0.25\columnwidth}}|}
+  \hline
+  \multicolumn{4}{|c|}{%
+    \raisebox{0pt}[3ex]{\textbf{\Ptype} \textbf{PROJECT} --- \Pseason }}\\
+  \hline
+  \raisebox{0pt}[3ex]{\textbf{Title:}}       & \multicolumn{3}{l|}{\textbf{\Ptitle}} \\
+  \raisebox{0pt}[3ex]{\textbf{Candidate:}}    & \Pcand &
+  \textbf{Section:}                          & \Psect \\
+  \raisebox{0pt}[3ex]{\textbf{Professor:}}  & \Pprof & & \\
+  \raisebox{0pt}[3ex]{\textbf{Assistant 1:}} & \Pfirst &
+  \textbf{Assistant 2:}                      & \Psecond \\
+  \hline
+\end{tabular}
+\end{center}
+
+\begin{multicols}{2} \flushcolumns
+
+\subsection*{Project Summary}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Put your text here
+Inform the reader about the purpose, used methods and results; 
+give the main conclusions and recommendations . Stress the novelty and possible impact.
+\\\\Blablabla...
+Blabla blabla bla bla Blabla blablablaBlabla blabla bla bla Blabla blablablaBlabla blabla bla bla BblaBlabla blabla bla bla Blabla blablablaBlabla blabla bla bla Blabla blablablaBlabla blabla bla bla Blabla blablablaBlabla blabla bla bla Blabla blablablaBlabla blabla bla bla BlBlabla blablab laBlabla blabla bla bla Blabla blablablaBlabla blabla bla bla Blabla blablablaBlabla blabla bla bla Blabla blablablaBlabla blabla bla bla Blabla blablablaBlabla blabla bla bla Blabla bla bla bla Blabla blablablaBlabla blabla bla bla Blabla blablablaBlabla blabla bla bla Blabla blablablaBlabla blabla bla bla Blabla blablablaBlabla blabla bla bla Blabla blablabla.
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%HOW TO INCLUDE AN IMAGE //not reccomended for documents with more than 1 page 
+\begin{minipage}{\columnwidth}
+\centering
+\includegraphics[width=4.4cm]{logo_vector}
+\footnotesize{ %because of  a non floating object, caption doesn't work}
+\\CAPTION Blabla blabla bla bla Blabla blabla blaBlabla blabla bla bla Blabla blabla blaBlabla blabla bla bla Blabla blablablaBlabla blabla bla bla Blabla blabl blabla bla  blabla bla bla Blabla blablabla.
+ }
+\end{minipage}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+Blabla blabla bla bla Blabla blablabla  Blabla blabla bla bla Blabla blablablaBlabla blabla bla bla Blabla blablablaBlabla blabla bla bla Blabla blablabla Blabla blabla bla bla Blabla blablablaBlabla blabla bla bla Blabla blablablaBlabla blabla bla bla Blabla blablablaBlabla blabla bla bla Blabla blablablaBlabla blabla bla bla Blabla blablablaBlabla blabla bla bla Blabla blab lablaBlabla blabla bla bla Blabla blablabla blabla bla bla Blabla blablablaBlabla blabla bla bla Blabla blablablaBlabla blabla bla bla Bla
+Blabla blabla bla bla Blabla blablablaBlabla blabla bla bla Blabla blablablaBlabla blabla bla bla Blabla blablablaBlabla blabla bla bla Blabla blablablaBlabla blabla bla bla Blabla blablablaBlabla blabla bla bla Blabla blablablaBlabla blabla bla bla Blabla blablabla.
+
+Three main blablas were found in this this project:
+\begin{itemize}
+\item {\bf Blabla} Blablabla...
+
+\item {\bf otherbla} Blablabla...
+
+\item {\bf moreBla} Blablabla...
+
+\end{itemize}
+
+Blabla blabla bla bla Blabla blablablaBlabla blabla bla bla Blabla blablablaBlabla blabla bla bla Blabla blablablaBlabla blabla blaabla blablablaBlabla blabla bla bla Blabla blablablaBlabla blabla bla bla Blabla blablablaBlabla blabla bla bla Bla
+Blabla blabla bla bla Blabla blablablaBlabla blabla bla bla Blabla blablablaBlabla blabla bla bla Blabla blablablaBlabla blabla bla bla Blabla blablabla blabla bla bla Blabla blablablaBlabla blabla bla bla Blabla blablablaBlabla blabla bla bla Bla
+Blabla blabla bla bla Blabla blablablaBlabla blabla bla bla Blabla blablablaBlabla blabla bla bla Blabla blablablaBlabla blabla bla bla Blabla blablablaBlabla blabla bla bla Blablla blablablaBlabla blabla bla bla Blabla blablablaBlabla blabla bla bla Blabla blablablaBlabla blabla bla bla Blabla blablablaBlabla blabla bla bla Blabla blab lablaBlabla blabla bla bla Blabla blablablaBlabla blabla bla bla Blabla blablablaBlabla blabla bla bla Bla bla blablablaBlabla blabla bla bla Blabla blablablaBlabla blabla bla bla Blabla blablablaBlabla blabla bla bla Blabla blablablaBlabla blabla bla bla Blabla blablablaBlabla blabla bla \\There is not really much space for bla bla...
+
+%%%%%% end of editable %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%\end{minipage}
+\end{multicols}
+
+\end{document}
